@@ -1,0 +1,10 @@
+- repo: git://github.com/pre-commit/pre-commit-hooks
+  sha: v0.6.0
+  hooks:
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+    - id: check-added-large-files
+    - id: check-yaml
+    - id: name-tests-test
+      args: ['--django']
+    - id: flake8
