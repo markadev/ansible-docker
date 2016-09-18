@@ -1,12 +1,14 @@
 from __future__ import absolute_import, print_function, unicode_literals
 import argparse
 import docker
+from functools import partial
 import logging
 import os
 import six
 import subprocess
 import tempfile
 from yaml.loader import SafeLoader
+
 
 logger = logging.getLogger('ansible-docker')
 
@@ -34,65 +36,69 @@ def parse_args():
     return parser.parse_args()
 
 
-def validate_single_type(config, name, type, prefix='', required=False):
+def _convert_to_string(value):
+    if isinstance(value, six.string_types) or \
+            isinstance(value, six.integer_types):
+        return six.text_type(value)
+    raise ValueError('Cannot convert value to a string')
+
+
+def _convert_list(element_type, value):
+    if not isinstance(value, list):
+        raise ValueError('Cannot convert value to a list')
+    return [element_type[1](v) for v in value]
+
+
+TYPE_NUMBER = ('number', int)
+TYPE_STRING = ('string', _convert_to_string)
+TYPE_LIST_STRING = ('list of strings', partial(_convert_list, TYPE_STRING))
+TYPE_LIST_NUMBER = ('list of numbers', partial(_convert_list, TYPE_NUMBER))
+
+
+def validate_config_type(config, name, type, prefix='', required=False):
     """
-    :param type: A tuple of (type, type_display_name)
+    :param type: A tuple of (type_name, type_converter)
     """
-    if name in config:
-        value = config[name]
-        if not isinstance(value, type[0]):
+    value = config.get(name)
+    if value is not None:
+        try:
+            converted_value = type[1](value)
+        except:
             raise ConfigurationError(
                 "Configuration value '{}{}' is not a {}"
-                .format(prefix, name, type[1]))
-        return (value, prefix + name + '/')
+                .format(prefix, name, type[0]))
+        config[name] = converted_value
+        return (converted_value, prefix + name + '/')
     elif required:
-        raise ConfigurationError("Required configuration missing: {}{}"
+        raise ConfigurationError("Configuration value '{}{}' is missing"
             .format(prefix, name))
     return (None, None)
 
 
-def validate_list_type(config, name, type, prefix='', required=False):
-    """
-    :param type: A tuple of (type, type_display_name)
-    """
-    values, values_prefix = validate_single_type(config, name,
-        type=(list, 'list'), prefix=prefix, required=required)
-    # TODO validate the list values are the right type
-    return values, values_prefix
-
-
 def validate_docker_config(cfg):
-    docker_cfg, docker_cfg_prefix = validate_single_type(cfg, 'docker',
-        type=(dict, 'map'), required=True)
+    docker_cfg, docker_cfg_prefix = validate_config_type(cfg, 'docker',
+        type=('map', dict), required=True)
 
     # Required parameters
-    validate_single_type(docker_cfg, 'base_image',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'base_image', type=TYPE_STRING,
         prefix=docker_cfg_prefix, required=True)
 
     # Optional parameters
-    validate_list_type(docker_cfg, 'build_volumes',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'build_volumes', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
-    validate_list_type(docker_cfg, 'cmd',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'cmd', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
-    validate_single_type(docker_cfg, 'entrypoint',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'entrypoint', type=TYPE_STRING,
         prefix=docker_cfg_prefix)
-    validate_list_type(docker_cfg, 'expose_ports', type=(int, 'integer'),
+    validate_config_type(docker_cfg, 'expose_ports', type=TYPE_LIST_NUMBER,
         prefix=docker_cfg_prefix)
-    validate_list_type(docker_cfg, 'labels',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'labels', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
-    validate_list_type(docker_cfg, 'tags',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'tags', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
-    validate_list_type(docker_cfg, 'volumes',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'volumes', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
-    validate_single_type(docker_cfg, 'workdir',
-        type=(six.string_types, 'string'),
+    validate_config_type(docker_cfg, 'workdir', type=TYPE_STRING,
         prefix=docker_cfg_prefix)
 
 
@@ -128,8 +134,7 @@ def load_configuration_file(filename):
         playbook_text = playbook_text.rstrip('\0')
 
     # Validate our stuff
-    validate_list_type(header, 'inventory_groups',
-        type=(six.string_types, 'string'))
+    validate_config_type(header, 'inventory_groups', type=TYPE_LIST_STRING)
     validate_docker_config(header)
 
     return (header, playbook_text)

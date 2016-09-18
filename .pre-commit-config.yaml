@@ -7,4 +7,3 @@
     - id: check-yaml
     - id: name-tests-test
       args: ['--django']
-    - id: flake8
