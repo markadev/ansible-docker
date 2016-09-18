@@ -1,1 +1,2 @@
 exclude .gitignore .pre-commit-config.yaml
+include-recursive examples
