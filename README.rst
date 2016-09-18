@@ -47,7 +47,7 @@ A simple configuration file::
     ---
     docker:
       base_image: "python:2.7-slim"
-      entrypoint: "/entrypoint.py"
+      entrypoint: [ "/entrypoint.py" ]
     ---
     - name: Provision the container
       gather_facts: no
