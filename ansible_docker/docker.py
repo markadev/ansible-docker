@@ -17,7 +17,9 @@ logger = logging.getLogger('ansible-docker')
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Building a Docker image with ansible')
+        description='Build a Docker image with ansible')
+    parser.add_argument('--pull', action='store_true',
+        help='Always pull down the latest base image')
     # TODO pass-thru to ansible
     #   -e, --vault-password-file
     #   -M --module-path
@@ -30,7 +32,7 @@ def parse_args():
     # -q
     # --version
     parser.add_argument('configfile',
-        help='Configuration file for building the container')
+        help='Configuration file describing how to build the image')
     return parser.parse_args()
 
 
@@ -105,8 +107,38 @@ def merge_command_line_args(args, config):
     """
     Merge the values specified on the command line into our configuration.
     """
-    # TODO when command line args are defined
-    pass
+    config['always_pull'] = args.pull
+
+
+def pull_base_image(config, docker_client):
+    """
+    Pulls the base image if it's not already present. If the option to always
+    pull is set then this always pulls down the latest image.
+    """
+    # Default to 'latest' if no tag is specified
+    image_name = config['docker']['base_image']
+    try:
+        repository, tag = image_name.split(':', 1)
+    except ValueError:
+        repository = image_name
+        tag = 'latest'
+
+    if not config['always_pull']:
+        # Check if we already have the base image
+        images = docker_client.images(name="{}:{}".format(repository, tag))
+        if len(images) > 0:
+            # We already have the image
+            return
+
+    # Either we don't have the image or we were configured to always pull it
+    logger.info("Pulling image %s:%s", repository, tag)
+    result = docker_client.pull(repository=repository, tag=tag) \
+        .rstrip().split('\n')
+    final_result = json.loads(result[-1])
+    if 'error' in final_result:
+        raise RuntimeError(final_result['error'])
+    if 'status' in final_result:
+        logger.info(final_result['status'])
 
 
 def make_container(config, docker_client):
@@ -229,6 +261,8 @@ def main():
     try:
         logger.debug("Connecting to Docker daemon")
         docker_client = docker.Client()
+
+        pull_base_image(config, docker_client)
 
         logger.info("Creating the container to provision")
         container_id = make_container(config, docker_client)
