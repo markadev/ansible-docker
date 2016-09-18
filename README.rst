@@ -8,7 +8,7 @@ playbooks as the provisioning language. It addresses several shortcomings
 with the default Docker toolkit to make building non-trivial images much
 more practical.
 
-Using Dockerfiles is fine if you are repackaging an open source or other
+Using a Dockerfile is fine if you are repackaging an open source or other
 publicly available package. But if you aren't, you might have one or more
 of these problems:
  * Building your image requires credentials to a private source code or
@@ -18,9 +18,24 @@ of these problems:
 
 Because of the way ``docker build`` works by building your image in layers
 on top of layers, you may find that your super-secret private repository
-credentials gets trapped in one of those layers. Temporary files part of
-any non-trivial package installation also get trapped in those layers
-causing your final Docker image to be much larger than they need to be.
+credentials gets trapped in one of those layers. Go ahead, export an image
+using ``docker save`` and poke around the layers of an image you've already
+built. Is that *your* access token in there? Well, it's everyone's access
+token now...
+
+Temporary files part of any non-trivial package installation also get
+trapped in those middle layers causing your final Docker image to be much
+larger than they need to be. Workarounds for this problem include ``&&``-itis;
+joining dozens of shell commands together with ``&&`` in an attempt to keep
+them all on the same layer. When you do this you lose the ability to add
+comments in-line and your Dockerfile becomes a mess.
+
+It doesn't have to be this way.
+
+``ansible-docker`` solves these problems by executing all of the provisioning
+in one Docker layer. There are no hidden layers for credentials or temporary
+files to hide in. You can focus on just installing software into your Docker
+image and let the tools handle the rest.
 
 
 Example Use
