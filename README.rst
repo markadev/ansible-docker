@@ -11,10 +11,11 @@ more practical.
 Using a Dockerfile is fine if you are repackaging an open source or other
 publicly available package. But if you aren't, you might have one or more
 of these problems:
- * Building your image requires credentials to a private source code or
-   package repository
- * Building your image requires a custom package installation procedure more
-   complicated than ``apt-get install``
+
+* Building your image requires credentials to a private source code or
+  package repository
+* Building your image requires a custom package installation procedure more
+  complicated than ``apt-get install``
 
 Because of the way ``docker build`` works by building your image in layers
 on top of layers, you may find that your super-secret private repository
