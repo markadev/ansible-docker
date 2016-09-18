@@ -1,0 +1,124 @@
+---
+docker:
+  base_image: "debian:jessie"
+  export_ports:
+    - 3306
+  entrypoint: [ "docker-entrypoint.sh" ]
+  cmd: [ "mysqld" ]
+  volumes:
+    - /var/lib/mysql
+
+# Temporarily install Python, which is required by Ansible
+preparation_commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends python
+cleanup_commands:
+  - apt-get purge -y python
+  - apt-get autoremove --purge -y
+
+---
+- name: Install gosu
+  hosts: all
+  vars:
+    gosu_version: 1.7
+  tasks:
+    - command: dpkg --print-architecture
+      register: arch
+    - group: name=mysql system=yes
+    - user: name=mysql group=mysql system=yes
+    - apt: name=ca-certificates state=present update_cache=yes
+    - get_url:
+        dest: /usr/local/bin/gosu
+        url: https://github.com/tianon/gosu/releases/download/{{ gosu_version }}/gosu-{{ arch.stdout }}
+        mode: 0755
+    - get_url:
+        dest: /usr/local/bin/gosu.asc
+        url: https://github.com/tianon/gosu/releases/download/{{ gosu_version }}/gosu-{{ arch.stdout }}.asc
+    - command: gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4
+    - command: gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu
+    - command: gosu nobody true
+
+- name: Install MySQL
+  hosts: all
+  vars:
+    mysql_major: 5.7
+    mysql_version: 5.7.15-1debian8
+  tasks:
+    - apt: name={{ item }}
+      with_items:
+        - perl
+        - pwgen
+    - name: Importing MySQL release key
+      apt_key: "keyserver=ha.pool.sks-keyservers.net id=A4A9406876FCBD3C456770C88C718D3B5072E1F5"
+    - name: Add MySQL release repository
+      apt_repository:
+        repo: "deb http://repo.mysql.com/apt/debian/ jessie mysql-{{ mysql_major }}"
+        state: present
+
+    # set debconf keys to make APT a little quieter
+    - name: Setting mysql-community-server preferences
+      debconf:
+        name: mysql-community-server
+        question: mysql-community-server/{{ item.question }}
+        vtype: "{{ item.vtype }}"
+        value: "{{ item.value }}"
+      with_items:
+        - { question: data-dir, vtype: select, value: '' }
+        - { question: root-pass, vtype: password, value: '' }
+        - { question: re-root-pass, vtype: password, value: '' }
+        - { question: remove-test-db, vtype: select, value: false }
+    - name: Install mysql
+      apt: name=mysql-server={{ mysql_version }} state=present update_cache=yes
+
+    # the "/var/lib/mysql" stuff here is because the mysql-server postinst
+    # doesn't have an explicit way to disable the mysql_install_db codepath
+    # besides having a database already "configured" (ie, stuff in
+    # /var/lib/mysql/mysql)
+    - file: path=/var/lib/mysql state=absent
+    - file: path=/var/lib/mysql state=directory owner=mysql group=mysql
+    - file: path=/var/lib/mysqld state=directory owner=mysql group=mysql mode=0777
+
+    # comment out a few problematic configuration values
+    - name: Binding to all addresses
+      lineinfile:
+        dest: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^bind-address'
+        state: absent
+    - name: Disabling logging in the container
+      lineinfile:
+        dest: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '^log'
+        state: absent
+    # don't reverse lookup hostnames, they are usually another container
+    - name: Disabling host-cache and name-resolve
+      blockinfile:
+        dest: /etc/mysql/mysql.conf.d/mysqld.cnf
+        insertafter: '\[mysqld\]'
+        block: |
+          skip-host-cache
+          skip-name-resolve
+
+    - name: Installing the entrypoint script
+      copy:
+        dest: /usr/local/bin/docker-entrypoint.sh
+        src: docker-entrypoint.sh
+        mode: 0755
+    - name: Creating DB initialization hook directory
+      file: path=/docker-entrypoint-initdb.d state=directory
+    - name: Creating backwards-compatibility entrypoint symlink
+      file:
+        path: /entrypoint.sh
+        state: link
+        src: usr/local/bin/docker-entrypoint.sh
+
+
+- name: Clean up unneeded packages and temporary files
+  hosts: all
+  tasks:
+    - apt: name={{ item }} state=absent purge=yes autoremove=yes
+      with_items:
+        - ca-certificates
+    - shell: rm -rf /var/lib/apt/lists/*
+
+
+# vim:set ts=2 sw=2 expandtab:

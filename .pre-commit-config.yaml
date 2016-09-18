@@ -4,6 +4,5 @@
     - id: end-of-file-fixer
     - id: trailing-whitespace
     - id: check-added-large-files
-    - id: check-yaml
     - id: name-tests-test
       args: ['--django']

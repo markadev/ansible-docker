@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 import argparse
 import docker
+import json
 import logging
 import os
 import subprocess
@@ -46,7 +47,7 @@ def validate_docker_config(cfg):
         prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'cmd', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'entrypoint', type=TYPE_STRING,
+    validate_config_type(docker_cfg, 'entrypoint', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'expose_ports', type=TYPE_LIST_NUMBER,
         prefix=docker_cfg_prefix)
@@ -92,7 +93,9 @@ def load_configuration_file(filename):
         playbook_text = playbook_text.rstrip('\0')
 
     # Validate our stuff
+    validate_config_type(header, 'cleanup_commands', type=TYPE_LIST_STRING)
     validate_config_type(header, 'inventory_groups', type=TYPE_LIST_STRING)
+    validate_config_type(header, 'preparation_commands', type=TYPE_LIST_STRING)
     validate_docker_config(header)
 
     return (header, playbook_text)
@@ -125,6 +128,42 @@ def make_container(config, docker_client):
     logger.debug("Started container")
 
     return container_id
+
+
+def run_command_list(commands, docker_client, container_id):
+    """
+    Runs a list of commands in the container
+    """
+    for command in commands:
+        logger.info("Running '%s'", command)
+        result = docker_client.exec_create(container=container_id, cmd=command)
+        exec_id = result['Id']
+        exec_output = docker_client.exec_start(exec_id=exec_id).split('\n')
+        exec_info = docker_client.exec_inspect(exec_id=exec_id)
+        log_level = logging.INFO if exec_info['ExitCode'] == 0 \
+            else logging.ERROR
+        for line in exec_output:
+            logger.log(log_level, line.rstrip())
+        if exec_info['ExitCode'] != 0:
+            raise RuntimeError('command failed')
+
+
+def get_extra_commands(config):
+    dcfg = config['docker']
+    result = []
+
+    if 'cmd' in dcfg:
+        result.append("CMD {}".format(json.dumps(dcfg['cmd'])))
+    if 'entrypoint' in dcfg:
+        result.append("ENTRYPOINT {}".format(json.dumps(dcfg['entrypoint'])))
+    for port in dcfg.get('expose_ports', []):
+        result.append("EXPOSE {}".format(port))
+    for volume in dcfg.get('volumes', []):
+        result.append("VOLUME {}".format(volume))
+    if 'workdir' in dcfg:
+        result.append("WORKDIR {}".format(dcfg['workdir']))
+
+    return result
 
 
 def run_ansible_playbook(config_file_name, config, playbook, container_name):
@@ -178,7 +217,10 @@ def main():
         merge_command_line_args(args, config)
     except Exception as e:
         logging.basicConfig(level=logging.INFO)
-        logger.error(e.message)
+        if isinstance(e, IOError):
+            logger.error(e.strerror)
+        else:
+            logger.error(e.message)
         raise SystemExit(2)
 
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
@@ -194,12 +236,19 @@ def main():
         container_name = container_info['Name'].lstrip('/')
         logger.info("Created a container named %s", container_name)
 
+        logger.info("Preparing the container")
+        run_command_list(config.get('preparation_commands', []),
+            docker_client, container_id)
+
         logger.info("Running the ansible playbook")
         run_ansible_playbook(args.configfile, config, playbook, container_name)
 
+        logger.info("Cleaning up the container")
+        run_command_list(config.get('cleanup_commands', []),
+            docker_client, container_id)
+
         logger.info("Committing the image")
-        # TODO: construct this from the config values
-        extra_commands = ['ENTRYPOINT /entrypoint.py']
+        extra_commands = get_extra_commands(config)
         docker_client.commit(container_id, changes=extra_commands)
     except Exception as e:
         logger.error(e.message)
