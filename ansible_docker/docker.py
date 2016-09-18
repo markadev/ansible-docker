@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from yaml.loader import SafeLoader
 
-from ansible_image.config import validate_config_type, ConfigurationError, \
+from ansible_docker.config import validate_config_type, ConfigurationError, \
     TYPE_STRING, TYPE_LIST_NUMBER, TYPE_LIST_STRING
 
 

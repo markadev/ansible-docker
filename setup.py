@@ -11,7 +11,7 @@ setup(
 
     packages=find_packages(),
     entry_points={
-        'console_scripts': ['ansible-docker=ansible_image.docker:main'],
+        'console_scripts': ['ansible-docker=ansible_docker.docker:main'],
     },
 
     install_requires=[
