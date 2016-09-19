@@ -1,0 +1,16 @@
+---
+docker:
+  base_image: python:2.7-slim
+  entrypoint: [ '/entrypoint.py' ]
+---
+- name: Provision the container
+  gather_facts: no
+  hosts: all
+  tasks:
+  - name: Install the thing
+    copy:
+      dest: /entrypoint.py
+      content: |
+        #!/usr/bin/env python
+        print('I'm a Python script. Weee!')
+      mode: 0755

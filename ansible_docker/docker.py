@@ -39,6 +39,7 @@ def parse_args():
 def validate_docker_config(cfg):
     docker_cfg, docker_cfg_prefix = validate_config_type(cfg, 'docker',
         type=('map', dict), required=True)
+    cfg['docker'] = docker_cfg
 
     # Required parameters
     validate_config_type(docker_cfg, 'base_image', type=TYPE_STRING,
@@ -53,10 +54,10 @@ def validate_docker_config(cfg):
         prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'expose_ports', type=TYPE_LIST_NUMBER,
         prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'labels', type=TYPE_LIST_STRING,
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'tags', type=TYPE_LIST_STRING,
-        prefix=docker_cfg_prefix)
+    #validate_config_type(docker_cfg, 'labels', type=TYPE_LIST_STRING,
+    #    prefix=docker_cfg_prefix)
+    #validate_config_type(docker_cfg, 'tags', type=TYPE_LIST_STRING,
+    #    prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'volumes', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'workdir', type=TYPE_STRING,
@@ -243,19 +244,17 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
     args = parse_args()
     try:
         config, playbook = load_configuration_file(args.configfile)
         merge_command_line_args(args, config)
-    except Exception as e:
-        logging.basicConfig(level=logging.INFO)
-        if isinstance(e, IOError):
-            logger.error(e.strerror)
-        else:
-            logger.error(e.message)
+    except IOError as e:
+        logger.error(e.strerror)
         raise SystemExit(2)
-
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
+    except Exception as e:
+        logger.error(e.message)
+        raise SystemExit(2)
 
     container_id = None
     try:
