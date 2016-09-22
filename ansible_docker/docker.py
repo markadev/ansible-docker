@@ -4,6 +4,7 @@ import docker
 import json
 import logging
 import os
+import pkg_resources
 import subprocess
 import tempfile
 from yaml.loader import SafeLoader
@@ -26,6 +27,11 @@ def split_repo_tag(repotag):
 
 
 def parse_args():
+    try:
+        version = pkg_resources.get_distribution('ansible-docker').version
+    except pkg_resources.DistributionNotFound:
+        version = 'version unknown'
+
     parser = argparse.ArgumentParser(
         description='Build a Docker image with ansible')
     parser.add_argument('--pull', action='store_true',
@@ -41,7 +47,8 @@ def parse_args():
     # Override labels and identifiers
     #   --label
     # -q
-    # --version
+    parser.add_argument('--version', action='version',
+        version='%(prog)s {}'.format(version))
     parser.add_argument('configfile',
         help='Configuration file describing how to build the image')
     return parser.parse_args()
