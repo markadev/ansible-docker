@@ -15,19 +15,30 @@ from ansible_docker.config import validate_config_type, ConfigurationError, \
 logger = logging.getLogger('ansible-docker')
 
 
+def split_repo_tag(repotag):
+    # Tag defaults to 'latest' if no tag is specified
+    try:
+        repository, tag = repotag.split(':', 1)
+    except ValueError:
+        repository = repotag
+        tag = 'latest'
+    return (repository, tag)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Build a Docker image with ansible')
     parser.add_argument('--pull', action='store_true',
         help='Always pull down the latest base image')
+    parser.add_argument('-t', dest='tag', action='append',
+        help='A name and optional tag (in the name:tag) format. This option ' +
+             'can be specified multiple times to apply multiple tags.')
     # TODO pass-thru to ansible
     #   -e, --vault-password-file
     #   -M --module-path
     #   --tags, --skip-tags
     #   -v
-    # --pull
     # Override labels and identifiers
-    #   -t,--tag
     #   --label
     # -q
     # --version
@@ -56,8 +67,8 @@ def validate_docker_config(cfg):
         prefix=docker_cfg_prefix)
     #validate_config_type(docker_cfg, 'labels', type=TYPE_LIST_STRING,
     #    prefix=docker_cfg_prefix)
-    #validate_config_type(docker_cfg, 'tags', type=TYPE_LIST_STRING,
-    #    prefix=docker_cfg_prefix)
+    validate_config_type(docker_cfg, 'tags', type=TYPE_LIST_STRING,
+        prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'volumes', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'workdir', type=TYPE_STRING,
@@ -109,6 +120,8 @@ def merge_command_line_args(args, config):
     Merge the values specified on the command line into our configuration.
     """
     config['always_pull'] = args.pull
+    if args.tag is not None:
+        config['docker']['tags'] = args.tag
 
 
 def pull_base_image(config, docker_client):
@@ -116,13 +129,7 @@ def pull_base_image(config, docker_client):
     Pulls the base image if it's not already present. If the option to always
     pull is set then this always pulls down the latest image.
     """
-    # Default to 'latest' if no tag is specified
-    image_name = config['docker']['base_image']
-    try:
-        repository, tag = image_name.split(':', 1)
-    except ValueError:
-        repository = image_name
-        tag = 'latest'
+    repository, tag = split_repo_tag(config['docker']['base_image'])
 
     if not config['always_pull']:
         # Check if we already have the base image
@@ -181,24 +188,6 @@ def run_command_list(commands, docker_client, container_id):
             raise RuntimeError('command failed')
 
 
-def get_extra_commands(config):
-    dcfg = config['docker']
-    result = []
-
-    if 'cmd' in dcfg:
-        result.append("CMD {}".format(json.dumps(dcfg['cmd'])))
-    if 'entrypoint' in dcfg:
-        result.append("ENTRYPOINT {}".format(json.dumps(dcfg['entrypoint'])))
-    for port in dcfg.get('expose_ports', []):
-        result.append("EXPOSE {}".format(port))
-    for volume in dcfg.get('volumes', []):
-        result.append("VOLUME {}".format(volume))
-    if 'workdir' in dcfg:
-        result.append("WORKDIR {}".format(dcfg['workdir']))
-
-    return result
-
-
 def run_ansible_playbook(config_file_name, config, playbook, container_name):
     # The playbook file should be in the same directory as the original
     # configuration file so that ansible will be able to find files
@@ -243,6 +232,45 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
             pass
 
 
+def commit_image(config, docker_client, container_id):
+    dcfg = config['docker']
+    extra_commands = []
+
+    if 'cmd' in dcfg:
+        extra_commands.append("CMD {}".format(json.dumps(dcfg['cmd'])))
+    if 'entrypoint' in dcfg:
+        extra_commands.append("ENTRYPOINT {}".format(
+            json.dumps(dcfg['entrypoint'])))
+    for port in dcfg.get('expose_ports', []):
+        extra_commands.append("EXPOSE {}".format(port))
+    for volume in dcfg.get('volumes', []):
+        extra_commands.append("VOLUME {}".format(volume))
+    if 'workdir' in dcfg:
+        extra_commands.append("WORKDIR {}".format(dcfg['workdir']))
+
+    image = docker_client.commit(container_id, changes=extra_commands)
+    return image['Id']
+
+
+def tag_image(config, docker_client, image_id):
+    repotags = config['docker'].get('tags', [])
+    for repotag in repotags:
+        repo, tag = split_repo_tag(repotag)
+        logger.info("Tagging image %s:%s", repo, tag)
+
+        # Remove any existing tag first. This prevents anonymous images
+        # from accumulating if a tag (like 'latest') is reused
+        try:
+            docker_client.remove_image(resource_id=repotag)
+        except docker.errors.APIError:
+            # Either tag was not found or it couldn't be removed because
+            # it's in use. The 'tag' command will still succed in the
+            # latter case.
+            pass
+
+        docker_client.tag(resource_id=image_id, repository=repo, tag=tag)
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
     args = parse_args()
@@ -281,8 +309,10 @@ def main():
             docker_client, container_id)
 
         logger.info("Committing the image")
-        extra_commands = get_extra_commands(config)
-        docker_client.commit(container_id, changes=extra_commands)
+        image_id = commit_image(config, docker_client, container_id)
+        logger.info("Created %s", image_id)
+
+        tag_image(config, docker_client, image_id)
     except Exception as e:
         logger.error(e.message)
         raise SystemExit(3)

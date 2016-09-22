@@ -1,8 +1,15 @@
 from __future__ import absolute_import, print_function, unicode_literals
+import mock
 import pytest
 
 from ansible_docker.config import ConfigurationError
-from ansible_docker.docker import validate_docker_config
+from ansible_docker.docker import validate_docker_config, pull_base_image, \
+    make_container, tag_image
+
+
+@pytest.fixture
+def mock_docker_client():
+    return mock.MagicMock()
 
 
 @pytest.mark.parametrize('config', [
@@ -35,6 +42,59 @@ def test_validate_docker_config_invalid(config):
     """Validate valid docker configs"""
     with pytest.raises(ConfigurationError):
         validate_docker_config(config)
+
+
+@pytest.mark.parametrize('have_image,always_pull,expect_pull', [
+    (False, False, True),
+    (True, False, False),
+    (True, True, True),
+])
+def test_pull_base_image(have_image, always_pull, expect_pull,
+        mock_docker_client):
+    image_name = 'junkapotamus:1.0'
+    config = {'always_pull': always_pull, 'docker': {'base_image': image_name}}
+    mock_docker_client.images.return_value = [{'Id': 'abc'}] if have_image \
+        else []
+    mock_docker_client.pull.return_value = '{"status": "great"}'
+
+    pull_base_image(config, mock_docker_client)
+
+    if expect_pull:
+        mock_docker_client.pull.assert_called_with(repository='junkapotamus',
+            tag='1.0')
+    else:
+        mock_docker_client.pull.assert_not_called()
+
+
+def test_make_container(mock_docker_client):
+    image_name = 'junkapotamus:1.0'
+    container_id = 'abcd'
+    config = {'docker': {'base_image': image_name}}
+
+    mock_docker_client.create_container.return_value = {
+        'Id': container_id,
+        'Warnings': None,
+    }
+
+    assert make_container(config, mock_docker_client) == container_id
+    mock_docker_client.create_container.assert_called_with(image_name,
+        command='sleep 360000')
+    mock_docker_client.start.assert_called_with(resource_id=container_id)
+
+
+def test_tag_image(mock_docker_client):
+    config = {'docker': {'tags': ['foo:1.0', 'foo:latest']}}
+    image_id = 'abcdzyxw'
+
+    tag_image(config, mock_docker_client, image_id)
+    mock_docker_client.remove_image.assert_has_calls([
+        mock.call(resource_id='foo:1.0'),
+        mock.call(resource_id='foo:latest'),
+    ])
+    mock_docker_client.tag.assert_has_calls([
+        mock.call(resource_id=image_id, repository='foo', tag='1.0'),
+        mock.call(resource_id=image_id, repository='foo', tag='latest'),
+    ])
 
 
 # vim:set ts=4 sw=4 expandtab:

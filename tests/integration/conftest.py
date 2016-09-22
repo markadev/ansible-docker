@@ -9,9 +9,15 @@ def basic_config():
     return pkg_resources.resource_filename(__name__, 'basic.yml')
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def docker_client():
     return docker.Client()
+
+
+@pytest.fixture(scope='session')
+def base_image(docker_client):
+    """Pulls the base image used for building all the test images."""
+    docker_client.pull('python', tag='2.7-slim')
 
 
 class ImageTracker(object):
@@ -30,11 +36,21 @@ class ImageTracker(object):
     def remove_images(self):
         """Removes all the images created since test start"""
         for img_id in self.get_image_ids():
-            self.docker_client.remove_image(resource_id=img_id)
+            # Get and remove all tags for the image first
+            img_info = self.docker_client.inspect_image(resource_id=img_id)
+            repotags = img_info.get('RepoTags', [])
+            if repotags is None:
+                repotags = []
+            for repotag in repotags:
+                self.docker_client.remove_image(resource_id=repotag)
+
+            # If there were no tags then remove by the image ID
+            if len(repotags) == 0:
+                self.docker_client.remove_image(resource_id=img_id)
 
 
 @pytest.fixture
-def image_tracker(docker_client):
+def image_tracker(base_image, docker_client):
     tracker = ImageTracker(docker_client)
     yield tracker
     tracker.remove_images()

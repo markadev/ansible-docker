@@ -34,6 +34,8 @@ setup(
     ],
 
     tests_require=[
+        'docker-py',
+        'mock',
         'pytest',
     ],
 
