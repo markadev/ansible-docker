@@ -1,0 +1,30 @@
+---
+docker:
+  base_image: python:2.7-slim
+  entrypoint: [ '/app/entrypoint.py' ]
+  cmd: [ 'param1', 'param2' ]
+  expose_ports: [ 10000 ]
+  workdir: /app
+  volumes: [ /data ]
+  tags: [ 'pythonapp:1.0', 'pythonapp:latest' ]
+---
+- name: Provision the container
+  gather_facts: no
+  hosts: all
+  vars:
+    # Default values for some variables
+    mode: dev
+  tasks:
+    - name: Create app directory
+      file: dest=/app state=directory
+
+    - name: Create data directory
+      file: dest=/data state=directory
+
+    - name: Install the entrypoint
+      copy:
+        dest: /app/entrypoint.py
+        content: |
+          #!/usr/bin/env python
+          print("I'm a Python app in {{ mode }} mode")
+        mode: 0755

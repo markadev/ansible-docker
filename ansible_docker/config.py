@@ -1,11 +1,21 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
+import argparse
 from functools import partial
 import six
 
 
 class ConfigurationError(Exception):
     pass
+
+
+class ArgSaverAction(argparse.Action):
+    """argparse action to save the option and its value in a list"""
+    def __call__(self, parser, namespace, values, option_string=None):
+        arglist = list(getattr(namespace, self.dest) or [])
+        arglist.append(option_string)
+        arglist.append(values)
+        setattr(namespace, self.dest, arglist)
 
 
 def _convert_to_string(value):

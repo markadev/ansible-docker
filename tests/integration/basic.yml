@@ -7,10 +7,10 @@ docker:
   gather_facts: no
   hosts: all
   tasks:
-  - name: Install the thing
-    copy:
-      dest: /entrypoint.py
-      content: |
-        #!/usr/bin/env python
-        print('I'm a Python script. Weee!')
-      mode: 0755
+    - name: Install the thing
+      copy:
+        dest: /entrypoint.py
+        content: |
+          #!/usr/bin/env python
+          print("I'm a Python script. Weee!")
+        mode: 0755

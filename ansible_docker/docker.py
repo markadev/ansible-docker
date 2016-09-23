@@ -9,7 +9,8 @@ import subprocess
 import tempfile
 from yaml.loader import SafeLoader
 
-from ansible_docker.config import validate_config_type, ConfigurationError, \
+from ansible_docker.config import ArgSaverAction, \
+    validate_config_type, ConfigurationError, \
     TYPE_STRING, TYPE_LIST_NUMBER, TYPE_LIST_STRING
 
 
@@ -34,19 +35,25 @@ def parse_args():
 
     parser = argparse.ArgumentParser(
         description='Build a Docker image with ansible')
+    parser.add_argument('-e', dest='ansible_args', metavar='EXTRA_VAR',
+        action=ArgSaverAction,
+        help='Set additional Ansible variables as key=value')
     parser.add_argument('--pull', action='store_true',
         help='Always pull down the latest base image')
     parser.add_argument('-t', dest='tag', action='append',
         help='A name and optional tag (in the name:tag) format. This option ' +
              'can be specified multiple times to apply multiple tags.')
     # TODO pass-thru to ansible
-    #   -e, --vault-password-file
+    #   --ask-vault-pass
+    #   --vault-password-file
     #   -M --module-path
     #   --tags, --skip-tags
     #   -v
     # Override labels and identifiers
     #   --label
     # -q
+    #parser.add_argument('--ask-vault-pass', action=ArgSaverAction, nargs=0,
+    #    dest='ansible_args')
     parser.add_argument('--version', action='version',
         version='%(prog)s {}'.format(version))
     parser.add_argument('configfile',
@@ -129,6 +136,8 @@ def merge_command_line_args(args, config):
     config['always_pull'] = args.pull
     if args.tag is not None:
         config['docker']['tags'] = args.tag
+    if args.ansible_args is not None:
+        config['ansible_args'] = args.ansible_args
 
 
 def pull_base_image(config, docker_client):
@@ -199,8 +208,6 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
     # The playbook file should be in the same directory as the original
     # configuration file so that ansible will be able to find files
     # relative to the playbook.
-    #inventory_fp, inventory_file_name = tempfile.mkstemp(
-    #    prefix='tmpinventory-', suffix='.txt')
     playbook_file_name = os.path.join(os.path.dirname(config_file_name),
         ".tmp-{}".format(os.path.basename(config_file_name)))
 
@@ -223,8 +230,8 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
         with open(playbook_file_name, 'w') as fp:
             fp.write(playbook)
 
-        ansible_args = ['-i', inventory_fp.name]
-        # TODO propagate through ansible command line args
+        ansible_args = ['-i', inventory_fp.name] + \
+            config.get('ansible_args', [])
         subprocess.check_call(['ansible-playbook'] + ansible_args +
             [playbook_file_name])
     except subprocess.CalledProcessError:
