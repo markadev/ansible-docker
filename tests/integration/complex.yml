@@ -4,6 +4,9 @@ docker:
   entrypoint: [ '/app/entrypoint.py' ]
   cmd: [ 'param1', 'param2' ]
   expose_ports: [ 10000 ]
+  labels:
+    net.primeletters.test: true
+    net.primeletters.version: 1
   workdir: /app
   volumes: [ /data ]
   tags: [ 'pythonapp:1.0', 'pythonapp:latest' ]

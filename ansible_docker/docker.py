@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import pkg_resources
+import six
 import subprocess
 import tempfile
 from yaml.loader import SafeLoader
@@ -27,6 +28,13 @@ def split_repo_tag(repotag):
     return (repository, tag)
 
 
+def escape_quotes(s):
+    """
+    Returns a string with backslash and double-quote characters escaped.
+    """
+    return s.replace('\\', '\\\\').replace('"', '\\"')
+
+
 def parse_args(args=None):
     try:
         version = pkg_resources.get_distribution('ansible-docker').version
@@ -41,8 +49,7 @@ def parse_args(args=None):
         action=ArgSaverAction, dest='ansible_args', metavar='EXTRA_VAR',
         help='Set additional Ansible variables as key=value')
     base_parser.add_argument('--vault-password-file',
-        action=ArgSaverAction, dest='ansible_args',
-        metavar='VAULT_PASSWORD_FILE',
+        action=ArgSaverAction, dest='ansible_args', metavar='FILE',
         help='Specify a file with the password to decrypt an Ansible vault')
     base_parser.add_argument('--version',
         action='version', version='%(prog)s {}'.format(version))
@@ -53,6 +60,9 @@ def parse_args(args=None):
         parents=[base_parser],
         description='Build a Docker image with ansible')
 
+    parser.add_argument('--label', action='append',
+        help='Add a label to the image of the format name=value. This ' +
+             'option can be specified multiple times to add multiple labels.')
     parser.add_argument('--pull', action='store_true',
         help='Always pull down the latest base image')
     parser.add_argument('-t', dest='tag', action='append',
@@ -62,15 +72,12 @@ def parse_args(args=None):
     # TODO pass-thru to ansible
     #   -M --module-path
     #   -v
-    # Override labels and identifiers
-    #   --label
     return parser.parse_args(args)
 
 
 def validate_docker_config(cfg):
     docker_cfg, docker_cfg_prefix = validate_config_type(cfg, 'docker',
         type=('map', dict), required=True)
-    cfg['docker'] = docker_cfg
 
     # Required parameters
     validate_config_type(docker_cfg, 'base_image', type=TYPE_STRING,
@@ -85,8 +92,8 @@ def validate_docker_config(cfg):
         prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'expose_ports', type=TYPE_LIST_NUMBER,
         prefix=docker_cfg_prefix)
-    #validate_config_type(docker_cfg, 'labels', type=TYPE_LIST_STRING,
-    #    prefix=docker_cfg_prefix)
+    validate_config_type(docker_cfg, 'labels', type=('map', dict),
+        prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'tags', type=TYPE_LIST_STRING,
         prefix=docker_cfg_prefix)
     validate_config_type(docker_cfg, 'volumes', type=TYPE_LIST_STRING,
@@ -144,6 +151,10 @@ def merge_command_line_args(args, config):
         config['docker']['tags'] = args.tag
     if args.ansible_args is not None:
         config['ansible_args'] = args.ansible_args
+    if args.label is not None:
+        new_label_list = map(lambda l: l.split('=', 1))
+        new_labels = dict((k.strip(), v.strip()) for k, v in new_label_list)
+        config['docker']['labels'] = new_labels
 
 
 def pull_base_image(config, docker_client):
@@ -265,6 +276,9 @@ def commit_image(config, docker_client, container_id):
         extra_commands.append("EXPOSE {}".format(port))
     for volume in dcfg.get('volumes', []):
         extra_commands.append("VOLUME {}".format(volume))
+    for k, v in six.iteritems(dcfg.get('labels', {})):
+        extra_commands.append("LABEL \"{}\"=\"{}\"".format(
+            escape_quotes(k), escape_quotes(str(v))))
     if 'workdir' in dcfg:
         extra_commands.append("WORKDIR {}".format(dcfg['workdir']))
 

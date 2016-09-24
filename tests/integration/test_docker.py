@@ -51,6 +51,9 @@ def test_build_complex(complex_config, image_tracker, docker_client):
     assert image_info['Config']['Entrypoint'] == ['/app/entrypoint.py']
     assert image_info['Config']['Cmd'] == ['param1', 'param2']
     assert image_info['Config']['ExposedPorts'] == {'10000/tcp': {}}
+    assert image_info['Config']['Labels'] == {
+        'net.primeletters.test': 'True',  # <- YAML bool converted to string
+        'net.primeletters.version': '1'}
     assert image_info['Config']['WorkingDir'] == '/app'
     assert image_info['Config']['Volumes'] == {'/data': {}}
 

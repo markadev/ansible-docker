@@ -29,6 +29,7 @@ def test_base_parse_args(args, attrname, expected_value):
 
 @pytest.mark.parametrize('args,attrname,expected_value', [
     ([], 'pull', False),
+    (['--label', 'a=1', '--label', 'b=2'], 'label', ['a=1', 'b=2']),
     (['--pull'], 'pull', True),
     (['-t', 't1', '-t', 't2'], 'tag', ['t1', 't2']),
 ])
@@ -44,6 +45,7 @@ def test_docker_parse_args(args, attrname, expected_value):
     {'docker': {'base_image': 'a', 'cmd': ['bash']}},
     {'docker': {'base_image': 'a', 'entrypoint': ['/start.sh']}},
     {'docker': {'base_image': 'a', 'expose_ports': [123, 345]}},
+    {'docker': {'base_image': 'a', 'labels': {'a': 'wee', 'b': 2}}},
     {'docker': {'base_image': 'a', 'volumes': ['v1', 'v2']}},
     {'docker': {'base_image': 'a', 'workdir': '/root'}},
 ])
@@ -61,6 +63,7 @@ def test_validate_docker_config_ok(config):
     {'docker': {'base_image': 'a', 'cmd': 'not_a_list'}},
     {'docker': {'base_image': 'a', 'entrypoint': 'not_a_list'}},
     {'docker': {'base_image': 'a', 'expose_ports': ['nan', 'nan']}},
+    {'docker': {'base_image': 'a', 'labels': 'not_a_dict'}},
     {'docker': {'base_image': 'a', 'volumes': 'not_a_list'}},
     {'docker': {'base_image': 'a', 'workdir': ['not', 'a', 'string']}},
 ])
