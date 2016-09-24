@@ -3,13 +3,39 @@ import mock
 import pytest
 
 from ansible_docker.config import ConfigurationError
-from ansible_docker.docker import validate_docker_config, pull_base_image, \
+from ansible_docker.docker import parse_args, \
+    validate_docker_config, pull_base_image, \
     make_container, run_command_list, tag_image
 
 
 @pytest.fixture
 def mock_docker_client():
     return mock.MagicMock()
+
+
+@pytest.mark.parametrize('args,attrname,expected_value', [
+    ([], 'configfile', 'fake_configfile.yml'),
+    (['--ask-vault-pass'], 'ansible_args', ['--ask-vault-pass']),
+    (['-e', 'v1=a', '-e', 'v2=b'], 'ansible_args',
+        ['-e', 'v1=a', '-e', 'v2=b']),
+    (['--vault-password-file', 'passwd.txt'], 'ansible_args',
+        ['--vault-password-file', 'passwd.txt']),
+])
+def test_base_parse_args(args, attrname, expected_value):
+    """Verify parsing of the base command line args"""
+    result = parse_args(args=args + ['fake_configfile.yml'])
+    assert getattr(result, attrname) == expected_value
+
+
+@pytest.mark.parametrize('args,attrname,expected_value', [
+    ([], 'pull', False),
+    (['--pull'], 'pull', True),
+    (['-t', 't1', '-t', 't2'], 'tag', ['t1', 't2']),
+])
+def test_docker_parse_args(args, attrname, expected_value):
+    """Verify parsing of the Docker command line args"""
+    result = parse_args(args=args + ['fake_configfile.yml'])
+    assert getattr(result, attrname) == expected_value
 
 
 @pytest.mark.parametrize('config', [

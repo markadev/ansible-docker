@@ -14,7 +14,10 @@ class ArgSaverAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         arglist = list(getattr(namespace, self.dest) or [])
         arglist.append(option_string)
-        arglist.append(values)
+        if self.nargs is not None:
+            arglist.extend(values)
+        else:
+            arglist.append(values)
         setattr(namespace, self.dest, arglist)
 
 

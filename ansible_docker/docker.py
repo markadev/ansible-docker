@@ -27,38 +27,44 @@ def split_repo_tag(repotag):
     return (repository, tag)
 
 
-def parse_args():
+def parse_args(args=None):
     try:
         version = pkg_resources.get_distribution('ansible-docker').version
     except pkg_resources.DistributionNotFound:
         version = 'version unknown'
 
-    parser = argparse.ArgumentParser(
-        description='Build a Docker image with ansible')
-    parser.add_argument('-e', dest='ansible_args', metavar='EXTRA_VAR',
-        action=ArgSaverAction,
+    base_parser = argparse.ArgumentParser(add_help=False)
+    base_parser.add_argument('--ask-vault-pass',
+        action=ArgSaverAction, nargs=0, dest='ansible_args',
+        help='Prompt for the password to decrypt Ansible vaults')
+    base_parser.add_argument('-e',
+        action=ArgSaverAction, dest='ansible_args', metavar='EXTRA_VAR',
         help='Set additional Ansible variables as key=value')
+    base_parser.add_argument('--vault-password-file',
+        action=ArgSaverAction, dest='ansible_args',
+        metavar='VAULT_PASSWORD_FILE',
+        help='Specify a file with the password to decrypt an Ansible vault')
+    base_parser.add_argument('--version',
+        action='version', version='%(prog)s {}'.format(version))
+    base_parser.add_argument('configfile',
+        help='Configuration file describing how to build the image')
+
+    parser = argparse.ArgumentParser(
+        parents=[base_parser],
+        description='Build a Docker image with ansible')
+
     parser.add_argument('--pull', action='store_true',
         help='Always pull down the latest base image')
     parser.add_argument('-t', dest='tag', action='append',
         help='A name and optional tag (in the name:tag) format. This option ' +
              'can be specified multiple times to apply multiple tags.')
+
     # TODO pass-thru to ansible
-    #   --ask-vault-pass
-    #   --vault-password-file
     #   -M --module-path
-    #   --tags, --skip-tags
     #   -v
     # Override labels and identifiers
     #   --label
-    # -q
-    #parser.add_argument('--ask-vault-pass', action=ArgSaverAction, nargs=0,
-    #    dest='ansible_args')
-    parser.add_argument('--version', action='version',
-        version='%(prog)s {}'.format(version))
-    parser.add_argument('configfile',
-        help='Configuration file describing how to build the image')
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def validate_docker_config(cfg):
