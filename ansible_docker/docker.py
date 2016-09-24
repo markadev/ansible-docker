@@ -208,7 +208,7 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
     # The playbook file should be in the same directory as the original
     # configuration file so that ansible will be able to find files
     # relative to the playbook.
-    playbook_file_name = os.path.join(os.path.dirname(config_file_name),
+    tmp_playbook_file_name = os.path.join(os.path.dirname(config_file_name),
         ".tmp-{}".format(os.path.basename(config_file_name)))
 
     inventory_fp = None
@@ -227,13 +227,13 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
         inventory_fp.flush()
 
         # Write the playbook to the temp file
-        with open(playbook_file_name, 'w') as fp:
+        with open(tmp_playbook_file_name, 'w') as fp:
             fp.write(playbook)
 
         ansible_args = ['-i', inventory_fp.name] + \
             config.get('ansible_args', [])
         subprocess.check_call(['ansible-playbook'] + ansible_args +
-            [playbook_file_name])
+            [tmp_playbook_file_name])
     except subprocess.CalledProcessError:
         raise RuntimeError("Ansible provisioning failed")
     finally:
@@ -241,7 +241,7 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
         if inventory_fp is not None:
             inventory_fp.close()
         try:
-            os.remove(playbook_file_name)
+            os.remove(tmp_playbook_file_name)
         except OSError:
             pass
 

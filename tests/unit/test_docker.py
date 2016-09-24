@@ -4,7 +4,7 @@ import pytest
 
 from ansible_docker.config import ConfigurationError
 from ansible_docker.docker import validate_docker_config, pull_base_image, \
-    make_container, tag_image
+    make_container, run_command_list, tag_image
 
 
 @pytest.fixture
@@ -80,6 +80,24 @@ def test_make_container(mock_docker_client):
     mock_docker_client.create_container.assert_called_with(image_name,
         command='sleep 360000')
     mock_docker_client.start.assert_called_with(resource_id=container_id)
+
+
+def test_run_command_list(mock_docker_client):
+    fake_container_id = 'abcd'
+    fake_exec_id = 'dumbledoor'
+    commands = [['echo', 'hello']]
+
+    # Set up the mocks
+    mock_docker_client.exec_create.return_value = {'Id': fake_exec_id}
+    mock_docker_client.exec_start.return_value = 'hello\n'
+    mock_docker_client.exec_inspect.return_value = {'ExitCode': 0}
+
+    # Run and verify the mocks were called properly
+    run_command_list(commands, mock_docker_client, fake_container_id)
+    mock_docker_client.exec_create.assert_called_with(
+        container=fake_container_id, cmd=commands[0])
+    mock_docker_client.exec_start.assert_called_with(exec_id=fake_exec_id)
+    mock_docker_client.exec_inspect.assert_called_with(exec_id=fake_exec_id)
 
 
 def test_tag_image(mock_docker_client):

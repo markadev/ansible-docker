@@ -9,6 +9,11 @@ def basic_config():
     return pkg_resources.resource_filename(__name__, 'basic.yml')
 
 
+@pytest.fixture
+def complex_config():
+    return pkg_resources.resource_filename(__name__, 'complex.yml')
+
+
 @pytest.fixture(scope='session')
 def docker_client():
     return docker.Client()
