@@ -2,13 +2,13 @@ from setuptools import find_packages, setup
 
 
 setup(
-    name='ansible-docker',
+    name='dockalot',
     description=('Build Docker images for the real world '
         'using ansible playbooks'),
     author='Mark Aikens',
     author_email='markadev@primeletters.net',
     license='MIT',
-    url='https://github.com/markadev/ansible-docker',
+    url='https://github.com/markadev/dockalot',
     long_description=open('README.rst').read(),
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -23,7 +23,7 @@ setup(
 
     packages=find_packages(),
     entry_points={
-        'console_scripts': ['ansible-docker=ansible_docker.docker:main'],
+        'console_scripts': ['dockalot=dockalot.docker:main'],
     },
 
     install_requires=[

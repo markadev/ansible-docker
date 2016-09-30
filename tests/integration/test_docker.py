@@ -6,13 +6,13 @@ from .markers import integration
 
 @integration
 def test_help():
-    rc = subprocess.call(['ansible-docker', '--help'])
+    rc = subprocess.call(['dockalot', '--help'])
     assert rc == 0
 
 
 @integration
 def test_build_basic(basic_config, image_tracker, docker_client):
-    subprocess.check_call(['ansible-docker', basic_config])
+    subprocess.check_call(['dockalot', basic_config])
     images = image_tracker.get_image_ids()
     assert len(images) == 1
 
@@ -24,7 +24,7 @@ def test_build_basic(basic_config, image_tracker, docker_client):
 
 @integration
 def test_build_and_tag(basic_config, image_tracker, docker_client):
-    subprocess.check_call(['ansible-docker',
+    subprocess.check_call(['dockalot',
         '-t', 'testimage',
         '-t', 'testimage:1.0',
         '-t', 'testimage:1.0.5',
@@ -40,7 +40,7 @@ def test_build_and_tag(basic_config, image_tracker, docker_client):
 
 @integration
 def test_build_complex(complex_config, image_tracker, docker_client):
-    subprocess.check_call(['ansible-docker', complex_config])
+    subprocess.check_call(['dockalot', complex_config])
     images = image_tracker.get_image_ids()
     assert len(images) == 1
 

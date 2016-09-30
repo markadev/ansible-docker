@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 import pytest
 
-from ansible_docker.config import ConfigurationError, validate_config_type, \
+from dockalot.config import ConfigurationError, validate_config_type, \
     TYPE_NUMBER, TYPE_STRING, TYPE_LIST_NUMBER, TYPE_LIST_STRING
 
 

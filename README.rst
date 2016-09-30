@@ -1,9 +1,9 @@
 ===============
-ansible-docker
+dockalot
 ===============
 *Building Docker images for the real world.*
 
-``ansible-docker`` is a tool to help building Docker images using Ansible
+``dockalot`` is a tool to help building Docker images using Ansible
 playbooks as the provisioning language. It addresses several shortcomings
 with the default Docker toolkit to make building non-trivial images much
 more practical.
@@ -33,7 +33,7 @@ comments in-line and your Dockerfile becomes a mess.
 
 It doesn't have to be this way.
 
-``ansible-docker`` solves these problems by executing all of the provisioning
+``dockalot`` solves these problems by executing all of the provisioning
 in one Docker layer. There are no hidden layers for credentials or temporary
 files to hide in. You can focus on just installing software into your Docker
 image and let the tools handle the rest.
@@ -47,12 +47,12 @@ Requirements:
 
 Try it out with one of the examples that comes with the source code::
 
-   ansible-docker examples/mysql/mysql-5.7.yml
+   dockalot examples/mysql/mysql-5.7.yml
 
 
 Configuration File
 ==================
-The configuration file for ``ansible-docker`` is a single YAML file
+The configuration file for ``dockalot`` is a single YAML file
 containing 2 sections separated by ``---``. The first section contains
 the configuration for the Docker image to build. The second section is
 a full-blown Ansible playbook that you can make as simple or as complex

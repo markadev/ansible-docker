@@ -2,8 +2,8 @@ from __future__ import absolute_import, print_function, unicode_literals
 import mock
 import pytest
 
-from ansible_docker.config import ConfigurationError
-from ansible_docker.docker import parse_args, \
+from dockalot.config import ConfigurationError
+from dockalot.docker import parse_args, \
     validate_docker_config, pull_base_image, \
     make_container, run_command_list, tag_image
 

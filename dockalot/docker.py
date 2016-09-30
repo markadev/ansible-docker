@@ -10,12 +10,12 @@ import subprocess
 import tempfile
 from yaml.loader import SafeLoader
 
-from ansible_docker.config import ArgSaverAction, \
+from dockalot.config import ArgSaverAction, \
     validate_config_type, ConfigurationError, \
     TYPE_STRING, TYPE_LIST_NUMBER, TYPE_LIST_STRING
 
 
-logger = logging.getLogger('ansible-docker')
+logger = logging.getLogger('dockalot')
 
 
 def split_repo_tag(repotag):
@@ -37,7 +37,7 @@ def escape_quotes(s):
 
 def parse_args(args=None):
     try:
-        version = pkg_resources.get_distribution('ansible-docker').version
+        version = pkg_resources.get_distribution('dockalot').version
     except pkg_resources.DistributionNotFound:
         version = 'version unknown'
 
