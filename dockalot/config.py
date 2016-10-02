@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 import argparse
-from functools import partial
+from collections import Mapping
 import six
 
 
@@ -21,43 +21,138 @@ class ArgSaverAction(argparse.Action):
         setattr(namespace, self.dest, arglist)
 
 
-def _convert_to_string(value):
+def string_importer(value, name):
     if isinstance(value, six.string_types) or \
             isinstance(value, six.integer_types):
         return six.text_type(value)
-    raise ValueError('Cannot convert value to a string')
+    raise ConfigurationError("Configuration value '{}' is not a string"
+        .format('.'.join(name)))
 
 
-def _convert_list(element_type, value):
-    if not isinstance(value, list):
-        raise ValueError('Cannot convert value to a list')
-    return [element_type[1](v) for v in value]
+def integer_importer(value, name):
+    try:
+        return long(value)
+    except:
+        raise ConfigurationError("Configuration value '{}' is not an integer"
+            .format('.'.join(name)))
 
 
-TYPE_NUMBER = ('number', int)
-TYPE_STRING = ('string', _convert_to_string)
-TYPE_LIST_STRING = ('list of strings', partial(_convert_list, TYPE_STRING))
-TYPE_LIST_NUMBER = ('list of numbers', partial(_convert_list, TYPE_NUMBER))
+def string_list_importer(value, name):
+    if isinstance(value, list):
+        return [string_importer(v, name + [str(i)])
+            for i, v in enumerate(value)]
+    raise ConfigurationError("Configuration value '{}' is not a list"
+        .format('.'.join(name)))
 
 
-def validate_config_type(config, name, type, prefix='', required=False):
-    """
-    :param type: A tuple of (type_name, type_converter)
-    """
-    value = config.get(name)
-    if value is not None:
-        try:
-            converted_value = type[1](value)
-        except:
-            raise ConfigurationError(
-                "Configuration value '{}{}' is not a {}"
-                .format(prefix, name, type[0]))
-        config[name] = converted_value
-        return (converted_value, prefix + name + '/')
-    elif required:
-        raise ConfigurationError("Configuration value '{}{}' is missing"
-            .format(prefix, name))
-    return (None, None)
+def integer_list_importer(value, name):
+    if isinstance(value, list):
+        return [integer_importer(v, name + [str(i)])
+            for i, v in enumerate(value)]
+    raise ConfigurationError("Configuration value '{}' is not a list"
+        .format('.'.join(name)))
+
+
+def string_dict_importer(value, name):
+    if isinstance(value, dict):
+        return dict((six.text_type(k), string_importer(v, name + [k]))
+            for k, v in six.iteritems(value))
+    raise ConfigurationError("Configuration value '{}' is not a dict"
+        .format('.'.join(name)))
+
+
+def docker_section_importer(value, name):
+    return DockerConfig(value, name)
+
+
+class BaseConfigDict(Mapping):
+    def __init__(self):
+        self.items = {}
+
+    def import_config_item(self, key, config_dict, importer=string_importer,
+            required=False, prefix=None):
+        """
+        Imports the configuration from config_dict, translating it to the
+        proper internal format using the given importer.
+        """
+        full_name = [key] if prefix is None else (prefix + [key])
+
+        value = config_dict.get(key)
+        if value is not None:
+            imported_value = importer(value, name=full_name)
+            self.items[key] = imported_value
+        elif required:
+            raise ConfigurationError("Configuration value for '{}' is missing"
+                .format('.'.join(full_name)))
+
+    def __len__(self):
+        return len(self.items)
+
+    def __getitem__(self, key):
+        return self.items[key]
+
+    def __iter__(self):
+        return iter(self.items)
+
+
+class DockerConfig(BaseConfigDict):
+    """Docker image configuration section"""
+    def __init__(self, config_dict, prefix):
+        super(DockerConfig, self).__init__()
+
+        # Required parameters
+        self.import_config_item('base_image', config_dict, prefix=prefix,
+            required=True)
+
+        # Optional parameters
+        self.import_config_item('cmd', config_dict,
+            importer=string_list_importer, prefix=prefix)
+        self.import_config_item('entrypoint', config_dict,
+            importer=string_list_importer, prefix=prefix)
+        self.import_config_item('expose_ports', config_dict,
+            importer=integer_list_importer, prefix=prefix)
+        self.import_config_item('labels', config_dict,
+            importer=string_dict_importer, prefix=prefix)
+        self.import_config_item('tags', config_dict,
+            importer=string_list_importer, prefix=prefix)
+        self.import_config_item('volumes', config_dict,
+            importer=string_list_importer, prefix=prefix)
+        self.import_config_item('workdir', config_dict, prefix=prefix)
+
+    def merge_command_line_args(self, args):
+        if args.tag is not None:
+            self.items['tags'] = args.tag
+        if args.label is not None:
+            new_label_list = map(lambda l: l.split('=', 1))
+            new_labels = dict((k.strip(), v.strip())
+                for k, v in new_label_list)
+            self.items['labels'] = new_labels
+
+
+class Config(BaseConfigDict):
+    """Top-level configuration dictionary"""
+    def __init__(self, config_dict):
+        super(Config, self).__init__()
+
+        self.import_config_item('inventory_groups', config_dict,
+            importer=string_list_importer, required=False)
+
+        self.import_config_item('preparation_commands', config_dict,
+            importer=string_list_importer, required=False)
+        self.import_config_item('cleanup_commands', config_dict,
+            importer=string_list_importer, required=False)
+
+        self.import_config_item('docker', config_dict,
+            importer=docker_section_importer, required=True)
+
+    def merge_command_line_args(self, args):
+        """
+        Merge the values specified on the command line into the configuration.
+        """
+        self.items['always_pull'] = args.pull
+        if args.ansible_args is not None:
+            self.items['ansible_args'] = args.ansible_args
+        self.items['docker'].merge_command_line_args(args)
 
 
 # vim:set ts=4 sw=4 expandtab:

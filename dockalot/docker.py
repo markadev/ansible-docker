@@ -10,9 +10,7 @@ import subprocess
 import tempfile
 from yaml.loader import SafeLoader
 
-from dockalot.config import ArgSaverAction, \
-    validate_config_type, ConfigurationError, \
-    TYPE_STRING, TYPE_LIST_NUMBER, TYPE_LIST_STRING
+from dockalot.config import ArgSaverAction, Config, ConfigurationError
 
 
 logger = logging.getLogger('dockalot')
@@ -75,33 +73,6 @@ def parse_args(args=None):
     return parser.parse_args(args)
 
 
-def validate_docker_config(cfg):
-    docker_cfg, docker_cfg_prefix = validate_config_type(cfg, 'docker',
-        type=('map', dict), required=True)
-
-    # Required parameters
-    validate_config_type(docker_cfg, 'base_image', type=TYPE_STRING,
-        prefix=docker_cfg_prefix, required=True)
-
-    # Optional parameters
-    validate_config_type(docker_cfg, 'build_volumes', type=TYPE_LIST_STRING,
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'cmd', type=TYPE_LIST_STRING,
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'entrypoint', type=TYPE_LIST_STRING,
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'expose_ports', type=TYPE_LIST_NUMBER,
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'labels', type=('map', dict),
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'tags', type=TYPE_LIST_STRING,
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'volumes', type=TYPE_LIST_STRING,
-        prefix=docker_cfg_prefix)
-    validate_config_type(docker_cfg, 'workdir', type=TYPE_STRING,
-        prefix=docker_cfg_prefix)
-
-
 def load_configuration_file(filename):
     """
     Opens the configuration file and parsers the first YAML document.
@@ -134,27 +105,8 @@ def load_configuration_file(filename):
         playbook_text = playbook_text.rstrip('\0')
 
     # Validate our stuff
-    validate_config_type(header, 'cleanup_commands', type=TYPE_LIST_STRING)
-    validate_config_type(header, 'inventory_groups', type=TYPE_LIST_STRING)
-    validate_config_type(header, 'preparation_commands', type=TYPE_LIST_STRING)
-    validate_docker_config(header)
-
-    return (header, playbook_text)
-
-
-def merge_command_line_args(args, config):
-    """
-    Merge the values specified on the command line into our configuration.
-    """
-    config['always_pull'] = args.pull
-    if args.tag is not None:
-        config['docker']['tags'] = args.tag
-    if args.ansible_args is not None:
-        config['ansible_args'] = args.ansible_args
-    if args.label is not None:
-        new_label_list = map(lambda l: l.split('=', 1))
-        new_labels = dict((k.strip(), v.strip()) for k, v in new_label_list)
-        config['docker']['labels'] = new_labels
+    config = Config(header)
+    return (config, playbook_text)
 
 
 def pull_base_image(config, docker_client):
@@ -310,7 +262,7 @@ def main():
     args = parse_args()
     try:
         config, playbook = load_configuration_file(args.configfile)
-        merge_command_line_args(args, config)
+        config.merge_command_line_args(args)
     except IOError as e:
         logger.error(e.strerror)
         raise SystemExit(2)
