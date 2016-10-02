@@ -66,7 +66,6 @@ A simple configuration file::
       entrypoint: [ "/entrypoint.py" ]
     ---
     - name: Provision the container
-      gather_facts: no
       hosts: all
       tasks:
         - name: Install the thing
