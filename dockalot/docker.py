@@ -273,7 +273,7 @@ def main():
     container_id = None
     try:
         logger.debug("Connecting to Docker daemon")
-        docker_client = docker.Client()
+        docker_client = docker.from_env()
 
         pull_base_image(config, docker_client)
 
