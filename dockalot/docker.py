@@ -299,6 +299,9 @@ def main():
         logger.info("Created %s", image_id)
 
         tag_image(config, docker_client, image_id)
+    except KeyboardInterrupt as e:
+        logger.error("Interrupted...")
+        raise SystemExit(16)
     except Exception as e:
         logger.error(e.message)
         raise SystemExit(3)
