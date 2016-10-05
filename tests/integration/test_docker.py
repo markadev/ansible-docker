@@ -1,13 +1,8 @@
 from __future__ import absolute_import, print_function, unicode_literals
+import os
 import subprocess
 
 from .markers import integration
-
-
-@integration
-def test_help():
-    rc = subprocess.call(['dockalot', '--help'])
-    assert rc == 0
 
 
 @integration
@@ -20,6 +15,22 @@ def test_build_basic(basic_config, image_tracker, docker_client):
     image_info = docker_client.inspect_image(resource_id=images[0])
     assert image_info['RepoTags'] == []
     assert image_info['Config']['Entrypoint'] == ['/entrypoint.py']
+
+
+@integration
+def test_build_failure(failing_config, image_tracker):
+    retry_file_name = os.path.join(os.path.dirname(failing_config),
+        ".tmp-{}.retry".format('failing'))
+
+    rc = subprocess.call(['dockalot', failing_config])
+    assert rc != 0
+
+    # No image should have been created
+    images = image_tracker.get_image_ids()
+    assert len(images) == 0
+
+    # The .retry file created by Ansible should be deleted
+    assert not os.path.exists(retry_file_name)
 
 
 @integration

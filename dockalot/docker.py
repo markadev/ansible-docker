@@ -11,6 +11,7 @@ import tempfile
 from yaml.loader import SafeLoader
 
 from dockalot.config import ArgSaverAction, Config, ConfigurationError
+from dockalot.file_util import safe_delete
 
 
 logger = logging.getLogger('dockalot')
@@ -209,10 +210,10 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
         # Delete our temp files
         if inventory_fp is not None:
             inventory_fp.close()
-        try:
-            os.remove(tmp_playbook_file_name)
-        except OSError:
-            pass
+        safe_delete(tmp_playbook_file_name)
+
+        # Delete the .retry file if one was created
+        safe_delete(os.path.splitext(tmp_playbook_file_name)[0] + '.retry')
 
 
 def commit_image(config, docker_client, container_id):

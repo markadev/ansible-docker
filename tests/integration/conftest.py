@@ -10,6 +10,11 @@ def basic_config():
 
 
 @pytest.fixture
+def failing_config():
+    return pkg_resources.resource_filename(__name__, 'failing.yml')
+
+
+@pytest.fixture
 def complex_config():
     return pkg_resources.resource_filename(__name__, 'complex.yml')
 
