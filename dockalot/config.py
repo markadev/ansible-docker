@@ -109,6 +109,8 @@ class DockerConfig(BaseConfigDict):
             importer=string_list_importer, prefix=prefix)
         self.import_config_item('entrypoint', config_dict,
             importer=string_list_importer, prefix=prefix)
+        self.import_config_item('env', config_dict,
+            importer=string_dict_importer, prefix=prefix)
         self.import_config_item('expose_ports', config_dict,
             importer=integer_list_importer, prefix=prefix)
         self.import_config_item('labels', config_dict,
@@ -123,7 +125,7 @@ class DockerConfig(BaseConfigDict):
         if args.tag is not None:
             self.items['tags'] = args.tag
         if args.label is not None:
-            new_label_list = map(lambda l: l.split('=', 1))
+            new_label_list = map(lambda l: l.split('=', 1), args.label)
             new_labels = dict((k.strip(), v.strip())
                 for k, v in new_label_list)
             self.items['labels'] = new_labels

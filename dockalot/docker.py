@@ -234,6 +234,9 @@ def commit_image(config, docker_client, container_id):
             escape_quotes(k), escape_quotes(str(v))))
     if 'workdir' in dcfg:
         extra_commands.append("WORKDIR {}".format(dcfg['workdir']))
+    for k, v in six.iteritems(dcfg.get('env', {})):
+        # No value quoting is necessary with this form of the ENV command
+        extra_commands.append("ENV {} {}".format(k, v))
 
     image = docker_client.commit(container_id, changes=extra_commands)
     return image['Id']

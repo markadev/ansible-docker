@@ -60,10 +60,12 @@ def test_build_complex(complex_config, image_tracker, docker_client):
     assert sorted(image_info['RepoTags']) == \
         ['pythonapp:1.0', 'pythonapp:latest']
     assert image_info['Config']['Entrypoint'] == ['/app/entrypoint.py']
+    assert 'APP_PATH=/app/bin' in image_info['Config']['Env']
+    assert 'DATASETS=1000 2000 3000' in image_info['Config']['Env']
     assert image_info['Config']['Cmd'] == ['param1', 'param2']
     assert image_info['Config']['ExposedPorts'] == {'10000/tcp': {}}
     assert image_info['Config']['Labels'] == {
-        'net.primeletters.test': 'True',  # <- YAML bool converted to string
+        'net.primeletters.test': 'enabled',
         'net.primeletters.version': '1'}
     assert image_info['Config']['WorkingDir'] == '/app'
     assert image_info['Config']['Volumes'] == {'/data': {}}

@@ -3,9 +3,12 @@ docker:
   base_image: python:2.7-slim
   entrypoint: [ '/app/entrypoint.py' ]
   cmd: [ 'param1', 'param2' ]
+  env:
+    APP_PATH: /app/bin
+    DATASETS: "1000 2000 3000"
   expose_ports: [ 10000 ]
   labels:
-    net.primeletters.test: true
+    net.primeletters.test: enabled
     net.primeletters.version: 1
   workdir: /app
   volumes: [ /data ]
