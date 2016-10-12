@@ -43,6 +43,7 @@ Example Use
 ===========
 
 Requirements:
+ * Python 2.7
  * Docker >= 1.12
 
 Try it out with one of the examples that comes with the source code::
