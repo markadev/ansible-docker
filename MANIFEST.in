@@ -1,1 +1,2 @@
-exclude .gitignore .pre-commit-config.yaml
+exclude .gitignore .pre-commit-config.yaml requirements-dev.txt
+exclude MANIFEST.in
