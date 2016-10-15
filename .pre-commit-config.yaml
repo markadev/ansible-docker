@@ -4,3 +4,4 @@
     - id: end-of-file-fixer
     - id: trailing-whitespace
     - id: check-added-large-files
+    - id: flake8

@@ -31,7 +31,7 @@ def string_importer(value, name):
 
 def integer_importer(value, name):
     try:
-        return long(value)
+        return int(value)
     except:
         raise ConfigurationError("Configuration value '{}' is not an integer"
             .format('.'.join(name)))
