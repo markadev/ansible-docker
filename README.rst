@@ -2,6 +2,10 @@
 dockalot
 ========
 
+*Building Docker images for the real world*
+
+|docs|
+
 Introduction
 ============
 
@@ -118,3 +122,9 @@ License
 =======
 
 The project is licensed under the MIT license.
+
+
+.. |docs| image:: https://readthedocs.org/projects/dockalot/badge/?version=latest
+    :alt: Documentation Status
+    :scale: 100%
+    :target: https://dockalot.readthedocs.io/en/latest/?badge=latest
