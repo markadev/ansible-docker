@@ -1,0 +1,14 @@
+language: python
+python:
+  - "2.7"
+os:
+  - linux
+  - osx
+
+install:
+  - pip install flake8
+
+before_script:
+  - flake8
+
+script: python setup.py test
