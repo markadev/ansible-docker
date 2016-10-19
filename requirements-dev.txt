@@ -1,6 +1,5 @@
 -e .
-flake8
-mock
+mock~=2.0
 pre-commit
-pytest
-sphinx
+pytest~=3.0
+Sphinx~=1.4
