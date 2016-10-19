@@ -35,8 +35,8 @@ setup(
 
     tests_require=[
         'docker-py',
-        'mock',
-        'pytest',
+        'mock~=2.0',
+        'pytest~=3.0',
     ],
 
     use_scm_version=True,
