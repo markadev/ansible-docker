@@ -4,7 +4,7 @@ dockalot
 
 *Building Docker images for the real world*
 
-|docs|
+|build-status| |docs|
 
 Introduction
 ============
@@ -128,3 +128,7 @@ The project is licensed under the MIT license.
     :alt: Documentation Status
     :scale: 100%
     :target: https://dockalot.readthedocs.io/en/latest/?badge=latest
+
+.. |build-status| image:: https://travis-ci.org/markadev/dockalot.svg?branch=master
+    :alt: build status
+    :target: https://travis-ci.org/markadev/dockalot
