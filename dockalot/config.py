@@ -23,7 +23,8 @@ class ArgSaverAction(argparse.Action):
 
 def string_importer(value, name):
     if isinstance(value, six.string_types) or \
-            isinstance(value, six.integer_types):
+            isinstance(value, six.integer_types) or \
+            isinstance(value, bool):
         return six.text_type(value)
     raise ConfigurationError("Configuration value '{}' is not a string"
         .format('.'.join(name)))
@@ -35,6 +36,22 @@ def integer_importer(value, name):
     except:
         raise ConfigurationError("Configuration value '{}' is not an integer"
             .format('.'.join(name)))
+
+
+def enum_importer(value_set):
+    """
+    Returns an importer function for enumerations with the given allowed
+    set of values.
+    """
+    def _importer(value, name):
+        lower_value = string_importer(value, name).lower()
+        if lower_value in value_set:
+            return lower_value
+
+        raise ConfigurationError("Configuration value '{}' is not one of "
+            "the expected values [ {} ]"
+            .format('.'.join(name), ', '.join(value_set)))
+    return _importer
 
 
 def string_list_importer(value, name):
@@ -70,7 +87,7 @@ class BaseConfigDict(Mapping):
         self.items = {}
 
     def import_config_item(self, key, config_dict, importer=string_importer,
-            required=False, prefix=None):
+            required=False, prefix=None, default=None):
         """
         Imports the configuration from config_dict, translating it to the
         proper internal format using the given importer.
@@ -84,6 +101,8 @@ class BaseConfigDict(Mapping):
         elif required:
             raise ConfigurationError("Configuration value for '{}' is missing"
                 .format('.'.join(full_name)))
+        elif default is not None:
+            self.items[key] = default
 
     def __len__(self):
         return len(self.items)

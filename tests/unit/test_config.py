@@ -3,7 +3,7 @@ import mock
 import pytest
 
 from dockalot.config import ConfigurationError, Config, DockerConfig, \
-    string_importer, integer_importer, \
+    string_importer, integer_importer, enum_importer, \
     string_list_importer, integer_list_importer, \
     string_dict_importer
 
@@ -19,8 +19,12 @@ class FakeArgs(object):
 @pytest.mark.parametrize('importer,input,expected_value', [
     (string_importer, 'abc', 'abc'),
     (string_importer, 123, '123'),
+    (string_importer, True, 'True'),
     (integer_importer, 123, 123),
     (integer_importer, '123', 123),
+    (enum_importer(['aaa', 'bbb']), 'aaa', 'aaa'),
+    (enum_importer(['aaa', 'bbb']), 'bbb', 'bbb'),
+    (enum_importer(['aaa', 'bbb']), 'AAa', 'aaa'),
     (string_list_importer, [], []),
     (string_list_importer, [1, '2', False], ['1', '2', 'False']),
     (integer_list_importer, [], []),
@@ -40,6 +44,7 @@ def test_importer_valid(importer, input, expected_value):
     (integer_importer, 'abcd'),
     (integer_importer, ['1']),
     (integer_importer, {'a': '1'}),
+    (enum_importer(['aaa', 'bbb']), 'xxx'),
     (string_list_importer, 'not_a_list'),
     (string_list_importer, ['a', 'b', []]),
     (integer_list_importer, 'not_a_list'),

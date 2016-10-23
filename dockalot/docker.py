@@ -156,21 +156,27 @@ def make_container(config, docker_client):
     return container_id
 
 
+def docker_exec(docker_client, container_id, command):
+    logger.debug("Executing \"%s\"", command)
+
+    result = docker_client.exec_create(container=container_id, cmd=command)
+    exec_id = result['Id']
+    exec_output = docker_client.exec_start(exec_id=exec_id).split('\n')
+    exec_info = docker_client.exec_inspect(exec_id=exec_id)
+    return (exec_info['ExitCode'], exec_output)
+
+
 def run_command_list(commands, docker_client, container_id):
     """
     Runs a list of commands in the container
     """
     for command in commands:
-        logger.info("Running '%s'", command)
-        result = docker_client.exec_create(container=container_id, cmd=command)
-        exec_id = result['Id']
-        exec_output = docker_client.exec_start(exec_id=exec_id).split('\n')
-        exec_info = docker_client.exec_inspect(exec_id=exec_id)
-        log_level = logging.INFO if exec_info['ExitCode'] == 0 \
-            else logging.ERROR
-        for line in exec_output:
+        logger.info("Running \"%s\"", command)
+        rc, output = docker_exec(docker_client, container_id, command)
+        log_level = logging.INFO if rc == 0 else logging.ERROR
+        for line in output:
             logger.log(log_level, line.rstrip())
-        if exec_info['ExitCode'] != 0:
+        if rc != 0:
             raise RuntimeError('command failed')
 
 
