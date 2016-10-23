@@ -2,6 +2,14 @@
 docker:
   base_image: python:2.7-slim
   entrypoint: [ '/entrypoint.py' ]
+
+# Temporarily install the system Python, which is required by Ansible
+preparation_commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends python
+cleanup_commands:
+  - apt-get purge -y python
+  - apt-get autoremove --purge -y
 ---
 - name: Provision the container
   hosts: all

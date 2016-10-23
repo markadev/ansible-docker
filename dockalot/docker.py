@@ -195,7 +195,6 @@ def run_ansible_playbook(config_file_name, config, playbook, container_name):
 
         inventory_fp.write(container_name)
         inventory_fp.write(' ansible_connection=docker')
-        inventory_fp.write(' ansible_python_interpreter="/usr/bin/env python"')
         inventory_fp.write('\n')
         # Add inventory groups
         for grp in set(config.get('inventory_groups', [])):
