@@ -47,6 +47,10 @@ def parse_args(args=None):
     base_parser.add_argument('-e',
         action=ArgSaverAction, dest='ansible_args', metavar='EXTRA_VAR',
         help='Set additional Ansible variables as key=value')
+    base_parser.add_argument('--keep-on-failure', action='store_true',
+        help='Do not delete the Docker container used to build the image if '
+            'the build fails. This allows manual inspection of the container '
+            'to help debug build configurations.')
     base_parser.add_argument('--vault-password-file',
         action=ArgSaverAction, dest='ansible_args', metavar='FILE',
         help='Specify a file with the password to decrypt an Ansible vault')
@@ -268,6 +272,7 @@ def tag_image(config, docker_client, image_id):
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
+
     args = parse_args()
     try:
         config, playbook = load_configuration_file(args.configfile)
@@ -280,6 +285,7 @@ def main():
         raise SystemExit(2)
 
     container_id = None
+    keep_container = args.keep_on_failure
     try:
         logger.debug("Connecting to Docker daemon")
         docker_client = docker.from_env()
@@ -307,6 +313,9 @@ def main():
         image_id = commit_image(config, docker_client, container_id)
         logger.info("Created %s", image_id)
 
+        # Never keep the container once the build is successful
+        keep_container = False
+
         tag_image(config, docker_client, image_id)
     except KeyboardInterrupt as e:
         logger.error("Interrupted...")
@@ -317,8 +326,9 @@ def main():
     finally:
         # Delete the container
         try:
-            docker_client.remove_container(resource_id=container_id,
-                force=True)
+            if not keep_container and container_id is not None:
+                docker_client.remove_container(resource_id=container_id,
+                    force=True)
         except:
             pass
 
