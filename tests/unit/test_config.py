@@ -73,6 +73,22 @@ def test_Config_validation(m, config_dict, key, expected_value):
     assert cfg[key] == expected_value
 
 
+def test_Config_nested_error_message():
+    """
+    Tests that an error message from a nested config section displays
+    like expected.
+    """
+    config_dict = {
+        'docker': {
+            'base_image': 'a',
+            'workdir': ['not a string'],
+        }
+    }
+    with pytest.raises(ConfigurationError) as e:
+        Config(config_dict)
+    assert e.value.message.startswith("Configuration value 'docker.workdir' ")
+
+
 @pytest.mark.parametrize('config_dict,key,expected_value', [
     ({'base_image': 'debian'},
         'base_image', 'debian'),
