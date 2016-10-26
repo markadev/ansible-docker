@@ -80,7 +80,7 @@ this::
 
     ---
     docker:
-      base_image: "python:2.7-slim"
+      base_image: "python:2.7"
       entrypoint: [ "/entrypoint.py" ]
       tags:
         - myapp
