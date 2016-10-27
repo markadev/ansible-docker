@@ -21,7 +21,7 @@ def complex_config():
 
 @pytest.fixture(scope='session')
 def docker_client():
-    return docker.from_env()
+    return docker.from_env(version='auto')
 
 
 @pytest.fixture(scope='session')

@@ -304,7 +304,7 @@ def main():
     keep_container = args.keep_on_failure
     try:
         logger.debug("Connecting to Docker daemon")
-        docker_client = docker.from_env()
+        docker_client = docker.from_env(version='auto')
 
         pull_base_image(config, docker_client)
 
