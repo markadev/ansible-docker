@@ -161,6 +161,8 @@ class Config(BaseConfigDict):
     def __init__(self, config_dict):
         super(Config, self).__init__()
 
+        self.items['always_pull'] = False
+
         self.import_config_item('inventory_groups', config_dict,
             importer=string_list_importer, required=False)
 

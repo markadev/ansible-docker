@@ -3,6 +3,7 @@ import docker
 import mock
 import pytest
 
+from dockalot.config import Config
 from dockalot.docker import parse_args, \
     pull_base_image, make_container, run_command_list, commit_image, \
     tag_image
@@ -11,6 +12,11 @@ from dockalot.docker import parse_args, \
 @pytest.fixture
 def mock_docker_client():
     return mock.create_autospec(docker.Client)
+
+
+@pytest.fixture
+def mock_config():
+    return Config({'docker': {'base_image': 'junkapotamus:1.0'}})
 
 
 @pytest.mark.parametrize('args,attrname,expected_value', [
@@ -45,14 +51,13 @@ def test_docker_parse_args(args, attrname, expected_value):
     (True, True, True),
 ])
 def test_pull_base_image(have_image, always_pull, expect_pull,
-        mock_docker_client):
-    image_name = 'junkapotamus:1.0'
-    config = {'always_pull': always_pull, 'docker': {'base_image': image_name}}
+        mock_config, mock_docker_client):
+    mock_config.items['always_pull'] = always_pull
     mock_docker_client.images.return_value = [{'Id': 'abc'}] if have_image \
         else []
     mock_docker_client.pull.return_value = '{"status": "great"}'
 
-    pull_base_image(config, mock_docker_client)
+    pull_base_image(mock_config, mock_docker_client)
 
     if expect_pull:
         mock_docker_client.pull.assert_called_with(repository='junkapotamus',
@@ -61,17 +66,16 @@ def test_pull_base_image(have_image, always_pull, expect_pull,
         mock_docker_client.pull.assert_not_called()
 
 
-def test_make_container(mock_docker_client):
+def test_make_container(mock_config, mock_docker_client):
     image_name = 'junkapotamus:1.0'
     container_id = 'abcd'
-    config = {'docker': {'base_image': image_name}}
 
     mock_docker_client.create_container.return_value = {
         'Id': container_id,
         'Warnings': None,
     }
 
-    assert make_container(config, mock_docker_client) == container_id
+    assert make_container(mock_config, mock_docker_client) == container_id
     mock_docker_client.create_container.assert_called_with(image_name,
         command='sleep 360000')
     mock_docker_client.start.assert_called_with(resource_id=container_id)
@@ -107,20 +111,23 @@ def test_run_command_list(mock_docker_client):
     ({'env': {'VERSION': '\"foo 1.0\"'}}, ['ENV VERSION \"foo 1.0\"']),
 ])
 def test_commit_image(docker_config, expected_extra_commands,
-        mock_docker_client):
-    config = {'docker': docker_config}
+        mock_config, mock_docker_client):
     container_id = 'fake_container_id'
     image_id = 'fake_image_id'
 
+    mock_config.items['docker'].items.update(docker_config)
     mock_docker_client.commit.return_value = {'Id': image_id}
 
-    assert commit_image(config, mock_docker_client, container_id) == image_id
+    assert commit_image(mock_config, mock_docker_client, container_id) == \
+        image_id
     mock_docker_client.commit.assert_called_with(container_id,
         changes=expected_extra_commands)
 
 
 def test_tag_image(mock_docker_client):
-    config = {'docker': {'tags': ['foo:1.0', 'foo:latest']}}
+    config = Config({'docker': {
+        'base_image': 'unused',
+        'tags': ['foo:1.0', 'foo:latest']}})
     image_id = 'abcdzyxw'
 
     tag_image(config, mock_docker_client, image_id)
