@@ -77,7 +77,7 @@ def test_make_container(mock_config, mock_docker_client):
 
     assert make_container(mock_config, mock_docker_client) == container_id
     mock_docker_client.create_container.assert_called_with(image_name,
-        command='sleep 360000')
+        command='sleep 360000', networking_config=None)
     mock_docker_client.start.assert_called_with(resource_id=container_id)
 
 

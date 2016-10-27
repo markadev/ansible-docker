@@ -162,6 +162,7 @@ class Config(BaseConfigDict):
         super(Config, self).__init__()
 
         self.items['always_pull'] = False
+        self.items['build_network'] = None
 
         self.import_config_item('inventory_groups', config_dict,
             importer=string_list_importer, required=False)
@@ -179,6 +180,7 @@ class Config(BaseConfigDict):
         Merge the values specified on the command line into the configuration.
         """
         self.items['always_pull'] = args.pull
+        self.items['build_network'] = args.network
         if args.ansible_args is not None:
             self.items['ansible_args'] = args.ansible_args
         self.items['docker'].merge_command_line_args(args)

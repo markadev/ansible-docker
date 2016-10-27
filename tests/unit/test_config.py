@@ -11,9 +11,12 @@ from dockalot.config import ConfigurationError, Config, DockerConfig, \
 # Class for holding fake command line args parsed from argparse
 class FakeArgs(object):
     def __init__(self, args):
-        self.tag = args.get('tag', None)
-        self.label = args.get('label', None)
+        self.ansible_args = args.get('ansible_args', None)
         self.env = args.get('env', None)
+        self.label = args.get('label', None)
+        self.network = args.get('network', None)
+        self.pull = args.get('pull', False)
+        self.tag = args.get('tag', None)
 
 
 @pytest.mark.parametrize('importer,input,expected_value', [
@@ -156,6 +159,23 @@ def test_DockerConfig_merge_command_line_args(config_dict, arg_dict,
 
     docker_config.merge_command_line_args(args)
     assert docker_config[item_name] == expected_value
+
+
+@pytest.mark.parametrize('config_dict,arg_dict,item_name,expected_value', [
+    ({}, {'network': 'my-net'}, 'build_network', 'my-net'),
+    ({}, {'pull': True}, 'always_pull', True),
+])
+def test_Config_merge_command_line_args(config_dict, arg_dict,
+        item_name, expected_value):
+    """
+    Tests Config.merge_command_line_args
+    """
+    config_dict['docker'] = {'base_image': 'debian'}
+    config = Config(config_dict)
+    args = FakeArgs(arg_dict)
+
+    config.merge_command_line_args(args)
+    assert config[item_name] == expected_value
 
 
 # vim:set ts=4 sw=4 expandtab:
