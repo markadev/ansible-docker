@@ -67,9 +67,16 @@ Requirements:
  * Python 2.7
  * Docker >= 1.12
 
-Install ``dockalot`` by running::
+Install ``dockalot`` using *pip*::
 
-    pip install dockalot
+    ubuntu@ubuntu-vm:~$ sudo pip install dockalot
+
+Or, to install without root access you can use a
+`virtual environment <https://pypi.python.org/pypi/virtualenv>`_::
+
+    ubuntu@ubuntu-vm:~$ mkvirtualenv dockalot
+    ubuntu@ubuntu-vm:~$ . dockalot/bin/activate
+    (dockalot) ubuntu@ubuntu-vm:~$ pip install dockalot
 
 
 Example Usage
