@@ -279,7 +279,7 @@ def tag_image(config, docker_client, image_id):
             docker_client.remove_image(resource_id=repotag)
         except docker.errors.APIError:
             # Either tag was not found or it couldn't be removed because
-            # it's in use. The 'tag' command will still succed in the
+            # it's in use. The 'tag' command will still succeed in the
             # latter case.
             pass
 
