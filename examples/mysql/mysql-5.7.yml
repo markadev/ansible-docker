@@ -42,7 +42,6 @@ cleanup_commands:
   hosts: all
   vars:
     mysql_major: 5.7
-    mysql_version: 5.7.15-1debian8
   tasks:
     - apt: name={{ item }}
       with_items:
@@ -54,6 +53,7 @@ cleanup_commands:
       apt_repository:
         repo: "deb http://repo.mysql.com/apt/debian/ jessie mysql-{{ mysql_major }}"
         state: present
+        update_cache: yes
 
     # set debconf keys to make APT a little quieter
     - name: Setting mysql-community-server preferences
@@ -68,7 +68,7 @@ cleanup_commands:
         - { question: re-root-pass, vtype: password, value: '' }
         - { question: remove-test-db, vtype: select, value: false }
     - name: Install mysql
-      apt: name=mysql-server={{ mysql_version }} state=present update_cache=yes
+      apt: name=mysql-server state=present
 
     # the "/var/lib/mysql" stuff here is because the mysql-server postinst
     # doesn't have an explicit way to disable the mysql_install_db codepath
