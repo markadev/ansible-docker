@@ -151,7 +151,7 @@ def make_container(config, docker_client):
     if config['build_network'] is not None:
         try:
             docker_client.inspect_network(config['build_network'])
-        except docker.errors.NotFound as e:
+        except docker.errors.NotFound:
             raise RuntimeError("Network '{}' not found".format(
                 config['build_network']))
         networking_config = docker_client.create_networking_config({
@@ -333,7 +333,7 @@ def main():
         keep_container = False
 
         tag_image(config, docker_client, image_id)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         logger.error("Interrupted...")
         raise SystemExit(16)
     except Exception as e:
