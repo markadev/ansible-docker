@@ -304,7 +304,14 @@ def main():
     keep_container = args.keep_on_failure
     try:
         logger.debug("Connecting to Docker daemon")
-        docker_client = docker.from_env(version='auto')
+        to=60
+        if 'DOCKER_CLIENT_TIMEOUT' in os.environ:
+            to=int(os.environ['DOCKER_CLIENT_TIMEOUT'])
+        try:
+            docker_client = docker.from_env(version='auto', timeout=to)
+        except TypeError:
+            logger.warn("docker-py version does not support timeout parameter")
+            docker_client = docker.from_env(version='auto')
 
         pull_base_image(config, docker_client)
 
